@@ -1,5 +1,5 @@
-#ifndef SIM_FRAME_H
-#define SIM_FRAME_H
+#ifndef LAYER4_SIM_FRAME_H
+#define LAYER4_SIM_FRAME_H
 
 #include <stdint.h>
 
