@@ -58,3 +58,36 @@ void client_emit_frame_sm4(SimHost *n, uint32_t dst_ip, const char *msg,
     udp_header_init(&out->udp, DEMO_UDP_SPORT, DEMO_UDP_DPORT,
                     out->app.sm4_cipher_len);
 }
+
+void client_emit_frame_payload(SimHost *n, uint32_t dst_ip,
+                               const uint8_t *data, size_t data_len, int use_sm4,
+                               uint16_t sport, uint16_t dport, SimFrame *out) {
+    if (data_len > APP_MAX_PAYLOAD) {
+        fprintf(stderr, "[客户端 节点 %d] 载荷超过 APP_MAX_PAYLOAD，已截断\n",
+                n->id);
+        data_len = APP_MAX_PAYLOAD;
+    }
+    memset(out, 0, sizeof(*out));
+    frame_fill_l2_l3(n, dst_ip, out);
+    if (!use_sm4) {
+        out->app.sm4_on = 0;
+        memcpy(out->app.text, data, data_len);
+        if (data_len < APP_MAX_PAYLOAD) {
+            out->app.text[data_len] = '\0';
+        }
+        udp_header_init(&out->udp, sport, dport, (uint16_t)data_len);
+        return;
+    }
+    out->app.sm4_on = 1;
+    memcpy(out->app.iv, SM4_IV, 16);
+    size_t clen;
+    if (sm4_encrypt_buffer(SM4_PSK, SM4_IV, data, data_len, out->app.sm4_cipher,
+                         sizeof(out->app.sm4_cipher), &clen) != 0) {
+        fprintf(stderr, "[客户端 节点 %d] SM4 加密失败\n", n->id);
+        out->app.sm4_cipher_len = 0;
+        udp_header_init(&out->udp, sport, dport, 0);
+        return;
+    }
+    out->app.sm4_cipher_len = (uint16_t)clen;
+    udp_header_init(&out->udp, sport, dport, out->app.sm4_cipher_len);
+}

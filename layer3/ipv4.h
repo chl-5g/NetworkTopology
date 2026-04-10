@@ -15,4 +15,7 @@ typedef struct {
 
 void ipv4_addr_fmt(char *buf, size_t bufsz, uint32_t addr);
 
+/* 解析点分 IPv4，得到与 ipv4_addr_fmt 一致的 32 位主机序值。成功返回 0。 */
+int ipv4_parse(const char *s, uint32_t *out);
+
 #endif

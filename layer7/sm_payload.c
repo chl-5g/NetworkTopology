@@ -37,25 +37,22 @@ static int pkcs7_unpad(const uint8_t *data, size_t len, size_t *plainlen) {
     return 0;
 }
 
-int sm4_encrypt_message(const uint8_t key[16], const uint8_t iv[16],
-                        const char *plaintext, uint8_t *cipher_out,
-                        size_t cipher_cap, size_t *cipher_len) {
-    size_t tlen = strlen(plaintext);
-    if (tlen > 200) {
+int sm4_encrypt_buffer(const uint8_t key[16], const uint8_t iv[16],
+                       const uint8_t *plaintext, size_t plaintext_len,
+                       uint8_t *cipher_out, size_t cipher_cap,
+                       size_t *cipher_len) {
+    if (plaintext_len > 200) {
         return -1;
     }
-
     uint8_t buf[256];
     size_t blen;
-    if (pkcs7_pad((const uint8_t *)plaintext, tlen, buf, &blen,
-                  sizeof(buf)) != 0) {
+    if (pkcs7_pad(plaintext, plaintext_len, buf, &blen, sizeof(buf)) != 0) {
         return -1;
     }
     size_t nblk = blen / SM4_BLOCK_SIZE;
     if (cipher_cap < blen) {
         return -1;
     }
-
     uint8_t iv_work[SM4_BLOCK_SIZE];
     memcpy(iv_work, iv, SM4_BLOCK_SIZE);
     SM4_KEY enc;
@@ -65,9 +62,18 @@ int sm4_encrypt_message(const uint8_t key[16], const uint8_t iv[16],
     return 0;
 }
 
-int sm4_decrypt_message(const uint8_t key[16], const uint8_t iv[16],
-                        const uint8_t *cipher, size_t cipher_len,
-                        char *plain_out, size_t plain_cap) {
+int sm4_encrypt_message(const uint8_t key[16], const uint8_t iv[16],
+                        const char *plaintext, uint8_t *cipher_out,
+                        size_t cipher_cap, size_t *cipher_len) {
+    return sm4_encrypt_buffer(key, iv, (const uint8_t *)plaintext,
+                              strlen(plaintext), cipher_out, cipher_cap,
+                              cipher_len);
+}
+
+int sm4_decrypt_buffer(const uint8_t key[16], const uint8_t iv[16],
+                       const uint8_t *cipher, size_t cipher_len,
+                       uint8_t *plain_out, size_t plain_cap,
+                       size_t *plain_len) {
     if (cipher_len == 0 || (cipher_len % SM4_BLOCK_SIZE) != 0) {
         return -1;
     }
@@ -75,22 +81,35 @@ int sm4_decrypt_message(const uint8_t key[16], const uint8_t iv[16],
     if (cipher_len > sizeof(buf)) {
         return -1;
     }
-
     uint8_t iv_work[SM4_BLOCK_SIZE];
     memcpy(iv_work, iv, SM4_BLOCK_SIZE);
     SM4_KEY dec;
     sm4_set_decrypt_key(&dec, key);
     sm4_cbc_decrypt_blocks(&dec, iv_work, cipher, cipher_len / SM4_BLOCK_SIZE,
                            buf);
-
     size_t plen;
     if (pkcs7_unpad(buf, cipher_len, &plen) != 0) {
+        return -1;
+    }
+    if (plen > plain_cap) {
+        return -1;
+    }
+    memcpy(plain_out, buf, plen);
+    *plain_len = plen;
+    return 0;
+}
+
+int sm4_decrypt_message(const uint8_t key[16], const uint8_t iv[16],
+                        const uint8_t *cipher, size_t cipher_len,
+                        char *plain_out, size_t plain_cap) {
+    size_t plen;
+    if (sm4_decrypt_buffer(key, iv, cipher, cipher_len, (uint8_t *)plain_out,
+                           plain_cap, &plen) != 0) {
         return -1;
     }
     if (plen + 1 > plain_cap) {
         return -1;
     }
-    memcpy(plain_out, buf, plen);
     plain_out[plen] = '\0';
     return 0;
 }

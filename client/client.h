@@ -13,4 +13,8 @@ void client_emit_frame(SimHost *n, uint32_t dst_ip, const char *msg,
 void client_emit_frame_sm4(SimHost *n, uint32_t dst_ip, const char *msg,
                            SimFrame *out);
 
+void client_emit_frame_payload(SimHost *n, uint32_t dst_ip,
+                               const uint8_t *data, size_t data_len, int use_sm4,
+                               uint16_t sport, uint16_t dport, SimFrame *out);
+
 #endif

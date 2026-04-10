@@ -15,6 +15,8 @@
 | **`layer5/`** | 会话层：`layer5_forward` 透传 |
 | **`layer6/`** | 表示层：`layer6_forward` 透传 |
 | **`layer7/`** | 应用层中继：`layer7_forward` 透传；**SM4** 实现与国密载荷逻辑（`sm4`/`sm_payload`/`sm_session`）供客户端、服务端链接 |
+| **`config/`** | `network.conf`：节点 IP/MAC、网关、UDP 端口、`use_sm4`、`packet_file` 路径 |
+| **`data/`** | 默认 `payload.txt`：应用层载荷文本文件（按字节读入），由客户端读入后组帧 |
 | **根目录** | 仅保留 `run.sh`、`README.md`（构建与说明） |
 
 交换机、路由器只处理 **L2/L3**（及以太类型判断 IPv4），**不解析** UDP 与 L7 密文；L1/L4/L5/L6/L7 的中间函数在仿真里主要体现**分层调用顺序**与**透传语义**。
@@ -35,8 +37,26 @@
 ./run.sh
 ```
 
-- `./sim`：全链路仿真（默认执行，`client/sim_main.c`）
+- `./sim`：全链路仿真（默认执行，`client/sim_main.c`）。固定参数**全部**从配置文件读取（默认 `config/network.conf`）；键名须**全大写**，且须列齐所有项（代码内无默认值）。载荷路径由 `PACKET_FILE` 指定（仓库自带 `data/payload.txt`）。
+- `./sim /其它路径/xxx.conf`：指定配置文件；路径相对于**当前工作目录**（`run.sh` 会先 `cd` 到项目根）。
 - `./topo`：`layer3/topo_main.c` + 迪杰斯特拉与 LPM 演示
+
+### 配置文件 `config/network.conf`
+
+`KEY=value` 一行一项，**键名必须全大写**；`#` 开头为注释。须包含下表**全部**键，缺一不可；不识别的键或缺项会导致加载失败（无内置默认）。
+
+| 键 | 含义 |
+|----|------|
+| `NODE_A_ID` / `NODE_B_ID` | 节点编号（正整数，写入 `SimHost`） |
+| `SWITCH_PORT_COUNT` | 每台交换机端口数（2–8，与 `layer2/switch` 上限一致） |
+| `NODE_A_IP` / `NODE_B_IP` | 两端 IPv4（点分十进制） |
+| `NODE_A_GW_IP` | A 的默认网关（演示用） |
+| `NODE_A_MAC` / `NODE_B_MAC` / `NODE_A_GW_MAC` | 十六进制，支持 `:` 或 `-` 分隔 |
+| `UDP_SPORT` / `UDP_DPORT` | UDP 端口（1–65535） |
+| `USE_SM4` | `1` 加密载荷，`0` 明文 |
+| `PACKET_FILE` | 载荷文件路径（按字节读入；相对路径相对运行时的当前目录） |
+
+**注意**：内置路由器 FIB 仍为 `192.168.1.0/24` 与 `10.0.0.0/8`；若修改 IP，须仍落在这两个网段内，否则 L3 会丢弃。
 
 手动编译须加入各层与 `client`/`server` 的 `-I` 路径，源文件列表见 `run.sh`。
 
