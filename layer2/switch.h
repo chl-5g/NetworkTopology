@@ -1,5 +1,5 @@
-#ifndef SWITCH_H
-#define SWITCH_H
+#ifndef LAYER2_SWITCH_H
+#define LAYER2_SWITCH_H
 
 #include <stdint.h>
 

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "ipv4.h"
 #include "router.h"
 
 static int mac_equal(const uint8_t a[6], const uint8_t b[6]) {
@@ -69,53 +70,53 @@ void router_init(Router *r) {
 }
 
 int router_process(Router *r, SimFrame *f, int in_if) {
-    if (f->ether_type != SIM_ETH_IPV4) {
-        printf("[路由器] 非 IPv4，丢弃\n");
+    if (f->eth.ether_type != ETH_TYPE_IPV4) {
+        printf("[网络层/路由器] 非 IPv4，丢弃\n");
         return -1;
     }
     if (in_if < 0 || in_if >= r->num_if) {
         return -1;
     }
-    if (!mac_equal(f->dst_mac, r->ifs[in_if].mac)) {
-        printf("[路由器] 目的 MAC 非本接口，丢弃\n");
+    if (!mac_equal(f->eth.dst_mac, r->ifs[in_if].mac)) {
+        printf("[网络层/路由器] 目的 MAC 非本接口，丢弃\n");
         return -1;
     }
 
-    if (router_is_local_ip(r, f->dst_ip)) {
-        printf("[路由器] 目的 IP 为本机接口，上送控制平面（此处仅打印）\n");
+    if (router_is_local_ip(r, f->ip.dst_addr)) {
+        printf("[网络层/路由器] 目的 IP 为本机接口，上送控制平面（此处仅打印）\n");
         return 0;
     }
 
-    if (f->ttl <= 1) {
-        printf("[路由器] TTL 耗尽，丢弃\n");
+    if (f->ip.ttl <= 1) {
+        printf("[网络层/路由器] TTL 耗尽，丢弃\n");
         return -1;
     }
-    f->ttl--;
+    f->ip.ttl--;
 
-    FIB_Entry *hit = lpm_lookup_in(r->fib, r->fib_n, f->dst_ip);
+    FIB_Entry *hit = lpm_lookup_in(r->fib, r->fib_n, f->ip.dst_addr);
     if (hit == NULL) {
-        printf("[路由器] 无匹配路由，丢弃\n");
+        printf("[网络层/路由器] 无匹配路由，丢弃\n");
         return -1;
     }
 
     int out_if = hit->out_interface;
     if (out_if == in_if) {
-        printf("[路由器] 出口与入口相同，丢弃\n");
+        printf("[网络层/路由器] 出口与入口相同，丢弃\n");
         return -1;
     }
 
-    const uint8_t *nh_mac = router_resolve_mac(r, f->dst_ip);
+    const uint8_t *nh_mac = router_resolve_mac(r, f->ip.dst_addr);
     if (nh_mac == NULL) {
-        printf("[路由器] 无 ARP，无法解析下一跳二层地址\n");
+        printf("[网络层/路由器] 无 ARP，无法解析下一跳二层地址\n");
         return -1;
     }
 
-    memcpy(f->dst_mac, nh_mac, 6);
-    memcpy(f->src_mac, r->ifs[out_if].mac, 6);
+    memcpy(f->eth.dst_mac, nh_mac, 6);
+    memcpy(f->eth.src_mac, r->ifs[out_if].mac, 6);
 
     char dip[20];
-    sim_ip_fmt(dip, sizeof(dip), f->dst_ip);
-    printf("[路由器] LPM 命中 -> 出接口 %d，转发到 %s（已重写以太网首部）\n",
+    ipv4_addr_fmt(dip, sizeof(dip), f->ip.dst_addr);
+    printf("[网络层/路由器] LPM 命中 -> 出接口 %d，转发到 %s（已重写以太网首部）\n",
            out_if, dip);
     return out_if;
 }

@@ -1,5 +1,5 @@
-#ifndef NODE_H
-#define NODE_H
+#ifndef LAYER7_APP_NODE_H
+#define LAYER7_APP_NODE_H
 
 #include <stdint.h>
 

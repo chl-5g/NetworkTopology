@@ -37,17 +37,18 @@ void switch_init(Switch *sw, int port_count) {
 }
 
 void switch_learn(Switch *sw, const SimFrame *f, int in_port) {
-    cam_insert(sw, f->src_mac, in_port);
+    cam_insert(sw, f->eth.src_mac, in_port);
 }
 
 int switch_forward_port(Switch *sw, const SimFrame *f, int in_port) {
     switch_learn(sw, f, in_port);
-    int egress = cam_find(sw, f->dst_mac);
+    int egress = cam_find(sw, f->eth.dst_mac);
     if (egress >= 0) {
-        printf("[交换机] CAM 命中: 目的 MAC -> 端口 %d\n", egress);
+        printf("[数据链路层/交换机] CAM 命中: 目的 MAC -> 端口 %d\n", egress);
         return egress;
     }
-    printf("[交换机] 目的 MAC 未知，单端口泛洪到除 %d 外的端口\n", in_port);
+    printf("[数据链路层/交换机] 目的 MAC 未知，单端口泛洪到除 %d 外的端口\n",
+           in_port);
     for (int p = 0; p < sw->port_count; p++) {
         if (p != in_port) {
             return p;

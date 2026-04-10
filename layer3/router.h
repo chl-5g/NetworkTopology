@@ -1,5 +1,5 @@
-#ifndef ROUTER_H
-#define ROUTER_H
+#ifndef LAYER3_ROUTER_H
+#define LAYER3_ROUTER_H
 
 #include <stdint.h>
 
