@@ -1,7 +1,9 @@
 #include <stdio.h>
 
 #include "ipv4.h"
+#include "layer_pdu_print.h"
 #include "server.h"
+#include "sim_frame.h"
 #include "sm_payload.h"
 #include "sm_session.h"
 #include "udp.h"
@@ -25,18 +27,16 @@ static void print_payload_line(const char *prefix, const uint8_t *p, size_t len)
         printf("\"%.*s\"\n", (int)len, (const char *)p);
         return;
     }
-    printf("长度=%zu hex=", len);
-    size_t show = len < 64u ? len : 64u;
-    for (size_t i = 0; i < show; i++) {
-        printf("%02X", p[i]);
-    }
-    if (len > 64u) {
-        printf("...");
-    }
-    printf("\n");
+    printf("长度=%zu（完整 HEX，无省略）\n", len);
+    printf("    单行: ");
+    sim_hex_line(p, len);
+    printf("    分行:\n");
+    sim_octets_hex_only(NULL, p, len);
 }
 
 void server_receive(const SimHost *n, const SimFrame *in) {
+    layer_pdu_print_l7_host(in, "收包交付应用前");
+
     char dip[20];
     ipv4_addr_fmt(dip, sizeof(dip), in->ip.dst_addr);
 

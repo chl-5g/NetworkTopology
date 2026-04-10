@@ -17,6 +17,7 @@ typedef struct {
 
 void switch_init(Switch *sw, int port_count);
 void switch_learn(Switch *sw, const SimFrame *f, int in_port);
-int switch_forward_port(Switch *sw, const SimFrame *f, int in_port);
+int switch_forward_port(Switch *sw, const SimFrame *f, int in_port,
+                        const char *pdu_where);
 
 #endif

@@ -3,10 +3,8 @@
 #include "client.h"
 #include "ipv4.h"
 #include "layer1_forward.h"
-#include "layer4_forward.h"
-#include "layer5_forward.h"
-#include "layer6_forward.h"
 #include "layer7_forward.h"
+#include "layer_pdu_print.h"
 #include "router.h"
 #include "server.h"
 #include "sim_config.h"
@@ -29,6 +27,14 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    printf("======== PACKET_FILE 读入的原始数据包（%zu 字节）========\n", plen);
+    sim_octets_print(NULL, payload, plen);
+    if (cfg.use_sm4) {
+        printf(
+            "（启用 USE_SM4=1 时，以上为加密前明文；下方 SimFrame 中 L7 为密文。）\n");
+    }
+    printf("\n");
+
     SimHost node_a, node_b;
     client_node_init(&node_a, cfg.node_a_id, cfg.node_a_mac, cfg.node_a_ip,
                      cfg.node_a_gw_mac, cfg.node_a_gw_ip);
@@ -49,8 +55,8 @@ int main(int argc, char **argv) {
     ipv4_addr_fmt(sb, sizeof(sb), cfg.node_b_ip);
 
     printf("配置: %s | 数据包: %s (%zu 字节)\n", cfg_path, cfg.packet_file, plen);
-    printf("架构: 客户端/服务端 + L1–L7 中间转发（L2 交换、L3 路由为真实逻辑，"
-           "其余层演示透传）\n");
+    printf("架构: 交换机 L2、路由器 L3；L1 与 B 侧 L5–L7 透传仅打印（无组帧等操作）；"
+           "发送端组帧、接收端应用见打印\n");
     printf("拓扑: 节点A --(SW1)-- 路由器 --(SW2)-- 节点B\n");
     printf("A=%s  B=%s（须与内置路由器 FIB 网段一致）\n", sa, sb);
     printf("载荷: L4 UDP %u→%u，%s\n\n", (unsigned)cfg.udp_sport,
@@ -61,45 +67,37 @@ int main(int argc, char **argv) {
                               cfg.udp_sport, cfg.udp_dport, &f);
 
     printf("========== ① 客户端组帧（应用 + L4 封装）==========\n");
-    sim_frame_dump("帧内容", &f);
+    layer_pdu_print_client_emit(payload, plen, &f, cfg.use_sm4, "组帧完成");
+    sim_frame_dump("[客户端组帧后] SimFrame 摘要与已用区 hexdump", &f);
 
     printf("\n========== ② L1 物理层 ==========\n");
     layer1_forward("A 出站 → SW1", &f);
 
     printf("\n========== ③ L2 交换机 SW1 ==========\n");
-    int p1 = switch_forward_port(&sw1, &f, 0);
+    int p1 = switch_forward_port(&sw1, &f, 0, "SW1");
     if (p1 != 1) {
         printf("预期: 未知单播泛洪到端口1（接路由器）\n");
     }
 
-    printf("\n========== ④ L4 传输层（中段透传）=========\n");
-    layer4_forward("SW1 侧", &f);
-
-    printf("\n========== ⑤ L3 路由器 ==========\n");
+    printf("\n========== ④ L3 路由器 ==========\n");
     int out_if = router_process(&router, &f, 0);
     if (out_if < 0) {
         return 1;
     }
-    sim_frame_dump("路由后帧", &f);
 
-    printf("\n========== ⑥ L4 传输层（中段透传）=========\n");
-    layer4_forward("SW2 侧", &f);
-
-    printf("\n========== ⑦ L2 交换机 SW2 ==========\n");
-    int p2 = switch_forward_port(&sw2, &f, 0);
+    printf("\n========== ⑤ L2 交换机 SW2 ==========\n");
+    int p2 = switch_forward_port(&sw2, &f, 0, "SW2");
     if (p2 != 1) {
         printf("注意: CAM 未命中时泛洪到端口1\n");
     }
 
-    printf("\n========== ⑧ L1 物理层 ==========\n");
+    printf("\n========== ⑥ L1 物理层 ==========\n");
     layer1_forward("SW2 → B", &f);
 
-    printf("\n========== ⑨ L5 / L6 / L7（对端接入链路透传）=========\n");
-    layer5_forward("B 侧", &f);
-    layer6_forward("B 侧", &f);
+    printf("\n========== ⑦ 端系统上层（L5–L7）透传 ==========\n");
     layer7_forward("B 侧", &f);
 
-    printf("\n========== ⑩ 服务端交付 ==========\n");
+    printf("\n========== ⑧ 服务端交付 ==========\n");
     server_receive(&node_b, &f);
 
     return 0;

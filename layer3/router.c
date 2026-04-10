@@ -2,7 +2,15 @@
 #include <string.h>
 
 #include "ipv4.h"
+#include "layer_pdu_print.h"
 #include "router.h"
+#include "sim_frame.h"
+
+static void router_dump_simframe(const char *ctx, const SimFrame *f) {
+    char t[160];
+    snprintf(t, sizeof t, "[L3 网络层/路由器] SimFrame（%s）", ctx);
+    sim_frame_dump(t, f);
+}
 
 static int mac_equal(const uint8_t a[6], const uint8_t b[6]) {
     return memcmp(a, b, 6) == 0;
@@ -72,42 +80,51 @@ void router_init(Router *r) {
 int router_process(Router *r, SimFrame *f, int in_if) {
     if (f->eth.ether_type != ETH_TYPE_IPV4) {
         printf("[网络层/路由器] 非 IPv4，丢弃\n");
+        router_dump_simframe("丢弃：非 IPv4", f);
         return -1;
     }
     if (in_if < 0 || in_if >= r->num_if) {
+        router_dump_simframe("丢弃：入口无效", f);
         return -1;
     }
     if (!mac_equal(f->eth.dst_mac, r->ifs[in_if].mac)) {
         printf("[网络层/路由器] 目的 MAC 非本接口，丢弃\n");
+        router_dump_simframe("丢弃：目的 MAC 非本接口", f);
         return -1;
     }
 
     if (router_is_local_ip(r, f->ip.dst_addr)) {
         printf("[网络层/路由器] 目的 IP 为本机接口，上送控制平面（此处仅打印）\n");
+        router_dump_simframe("本机接口上送", f);
         return 0;
     }
 
     if (f->ip.ttl <= 1) {
         printf("[网络层/路由器] TTL 耗尽，丢弃\n");
+        router_dump_simframe("丢弃：TTL 耗尽", f);
         return -1;
     }
+    uint8_t ttl_before = f->ip.ttl;
     f->ip.ttl--;
 
     FIB_Entry *hit = lpm_lookup_in(r->fib, r->fib_n, f->ip.dst_addr);
     if (hit == NULL) {
         printf("[网络层/路由器] 无匹配路由，丢弃\n");
+        router_dump_simframe("丢弃：无匹配路由", f);
         return -1;
     }
 
     int out_if = hit->out_interface;
     if (out_if == in_if) {
         printf("[网络层/路由器] 出口与入口相同，丢弃\n");
+        router_dump_simframe("丢弃：出口与入口相同", f);
         return -1;
     }
 
     const uint8_t *nh_mac = router_resolve_mac(r, f->ip.dst_addr);
     if (nh_mac == NULL) {
         printf("[网络层/路由器] 无 ARP，无法解析下一跳二层地址\n");
+        router_dump_simframe("丢弃：无 ARP", f);
         return -1;
     }
 
@@ -118,5 +135,6 @@ int router_process(Router *r, SimFrame *f, int in_if) {
     ipv4_addr_fmt(dip, sizeof(dip), f->ip.dst_addr);
     printf("[网络层/路由器] LPM 命中 -> 出接口 %d，转发到 %s（已重写以太网首部）\n",
            out_if, dip);
+    layer_pdu_print_l3_router(f, "路由器转发", ttl_before);
     return out_if;
 }

@@ -3,15 +3,83 @@
 #include "eth.h"
 #include "ipv4.h"
 #include "sim_frame.h"
-#include "udp.h"
 
-static int dump_printable(const uint8_t *p, size_t len) {
-    for (size_t i = 0; i < len; i++) {
-        if (p[i] < 32u || p[i] > 126u) {
-            return 0;
+/* 从 SimFrame 首字节到「应用层已用区」末尾（不含 sm4_cipher/text 数组余量） */
+static size_t simframe_dump_used_octets(const SimFrame *f) {
+    if (f->app.sm4_on) {
+        size_t clen = (size_t)f->app.sm4_cipher_len;
+        if (clen > APP_SM4_CIPHER_MAX) {
+            clen = APP_SM4_CIPHER_MAX;
         }
+        const uint8_t *end = f->app.sm4_cipher + clen;
+        return (size_t)(end - (const uint8_t *)f);
     }
-    return 1;
+    size_t ulen = 0;
+    if (f->udp.length > UDP_HDR_LEN) {
+        ulen = (size_t)f->udp.length - UDP_HDR_LEN;
+    }
+    if (ulen > APP_MAX_PAYLOAD) {
+        ulen = APP_MAX_PAYLOAD;
+    }
+    const uint8_t *end = (const uint8_t *)f->app.text + ulen;
+    return (size_t)(end - (const uint8_t *)f);
+}
+
+void sim_hex_line(const uint8_t *p, size_t len) {
+    for (size_t i = 0; i < len; i++) {
+        if (i > 0) {
+            printf(" ");
+        }
+        printf("%02X", p[i]);
+    }
+    printf("\n");
+}
+
+void sim_octets_hex_only(const char *label, const uint8_t *p, size_t len) {
+    if (label != NULL && label[0] != '\0') {
+        printf("%s\n", label);
+    }
+    if (len == 0) {
+        printf("  （0 字节）\n");
+        return;
+    }
+    for (size_t i = 0; i < len; i += 16) {
+        printf("  %04zx ", (unsigned long)i);
+        for (size_t j = 0; j < 16; j++) {
+            if (i + j < len) {
+                printf("%02X ", p[i + j]);
+            } else {
+                printf("   ");
+            }
+        }
+        printf("\n");
+    }
+}
+
+void sim_octets_print(const char *label, const uint8_t *p, size_t len) {
+    if (label != NULL && label[0] != '\0') {
+        printf("%s\n", label);
+    }
+    if (len == 0) {
+        printf("  （0 字节）\n");
+        return;
+    }
+    for (size_t i = 0; i < len; i += 16) {
+        printf("  %04zx ", (unsigned long)i);
+        for (size_t j = 0; j < 16; j++) {
+            if (i + j < len) {
+                printf("%02X ", p[i + j]);
+            } else {
+                printf("   ");
+            }
+        }
+        printf(" |");
+        for (size_t j = 0; j < 16 && i + j < len; j++) {
+            unsigned char c = p[i + j];
+            printf("%c", (c >= 32u && c < 127u) ? (char)c : '.');
+        }
+        printf("|\n");
+    }
 }
 
 void sim_frame_dump(const char *title, const SimFrame *f) {
@@ -21,49 +89,16 @@ void sim_frame_dump(const char *title, const SimFrame *f) {
     ipv4_addr_fmt(sip, sizeof(sip), f->ip.src_addr);
     ipv4_addr_fmt(dip, sizeof(dip), f->ip.dst_addr);
     printf("%s\n", title);
-    printf("  [L2 以太网] dst=%s src=%s type=0x%04X\n", dm, sm,
-           f->eth.ether_type);
-    printf("  [L3 IPv4] %s -> %s TTL=%u proto=%u\n", sip, dip, f->ip.ttl,
-           f->ip.protocol);
-    printf("  [L4 UDP] 端口 %u -> %u length=%u\n",
-           (unsigned)f->udp.src_port, (unsigned)f->udp.dst_port,
-           (unsigned)f->udp.length);
-    if (f->app.sm4_on) {
-        printf("  [L7 应用] SM4-CBC（国密 GB/T 32907）密文长度=%u，",
-               (unsigned)f->app.sm4_cipher_len);
-        printf("IV= ");
-        for (int i = 0; i < 16; i++) {
-            printf("%02X", f->app.iv[i]);
-        }
-        printf("，密文前16字节= ");
-        int n = f->app.sm4_cipher_len < 16 ? f->app.sm4_cipher_len : 16;
-        for (int i = 0; i < n; i++) {
-            printf("%02X", f->app.sm4_cipher[i]);
-        }
-        printf("...\n");
-    } else {
-        size_t app_len = 0;
-        if (f->udp.length > UDP_HDR_LEN) {
-            app_len = (size_t)(f->udp.length - UDP_HDR_LEN);
-        }
-        if (app_len > APP_MAX_PAYLOAD) {
-            app_len = APP_MAX_PAYLOAD;
-        }
-        printf("  [L7 应用] 明文 ");
-        if (app_len == 0) {
-            printf("（空）\n");
-        } else if (dump_printable((const uint8_t *)f->app.text, app_len)) {
-            printf("\"%.*s\"\n", (int)app_len, f->app.text);
-        } else {
-            printf("长度=%zu hex=", app_len);
-            size_t show = app_len < 32u ? app_len : 32u;
-            for (size_t i = 0; i < show; i++) {
-                printf("%02X", (unsigned char)f->app.text[i]);
-            }
-            if (app_len > 32u) {
-                printf("...");
-            }
-            printf("\n");
-        }
-    }
+    printf("  摘要 L2/L3/L4: eth dst=%s src=%s | %s -> %s TTL=%u | UDP %u->%u "
+           "udp_len=%u | app.sm4_on=%u\n",
+           dm, sm, sip, dip, (unsigned)f->ip.ttl, (unsigned)f->udp.src_port,
+           (unsigned)f->udp.dst_port, (unsigned)f->udp.length,
+           (unsigned)f->app.sm4_on);
+    size_t used = simframe_dump_used_octets(f);
+    printf("  SimFrame 内存布局：sizeof=%zu（含大数组与对齐）；以下 hexdump 仅「已用区」"
+           "%zu 字节（eth+ip+udp+app 至密文末或 text 已用末），避免刷屏\n",
+           sizeof(*f), used);
+    sim_octets_hex_only(NULL, (const uint8_t *)f, used);
+    printf("  SimFrame 单行连续 HEX（同上，已用区）:\n    ");
+    sim_hex_line((const uint8_t *)f, used);
 }

@@ -4,5 +4,6 @@
 
 void layer7_forward(const char *where, SimFrame *f) {
     (void)f;
-    printf("[L7 应用层] %s: 中继透传（载荷视为不透明字节）\n", where);
+    printf("[端系统] %s: L5/L6/L7 透传（仿真仅打印；不拆 PDU、不组帧、无状态）\n",
+           where);
 }

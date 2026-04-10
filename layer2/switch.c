@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "layer_pdu_print.h"
+#include "sim_frame.h"
 #include "switch.h"
 
 static int mac_equal(const uint8_t a[6], const uint8_t b[6]) {
@@ -40,19 +42,29 @@ void switch_learn(Switch *sw, const SimFrame *f, int in_port) {
     cam_insert(sw, f->eth.src_mac, in_port);
 }
 
-int switch_forward_port(Switch *sw, const SimFrame *f, int in_port) {
+int switch_forward_port(Switch *sw, const SimFrame *f, int in_port,
+                        const char *pdu_where) {
     switch_learn(sw, f, in_port);
     int egress = cam_find(sw, f->eth.dst_mac);
     if (egress >= 0) {
         printf("[数据链路层/交换机] CAM 命中: 目的 MAC -> 端口 %d\n", egress);
+        if (pdu_where != NULL) {
+            layer_pdu_print(2, pdu_where, f);
+        }
         return egress;
     }
     printf("[数据链路层/交换机] 目的 MAC 未知，单端口泛洪到除 %d 外的端口\n",
            in_port);
     for (int p = 0; p < sw->port_count; p++) {
         if (p != in_port) {
+            if (pdu_where != NULL) {
+                layer_pdu_print(2, pdu_where, f);
+            }
             return p;
         }
+    }
+    if (pdu_where != NULL) {
+        layer_pdu_print(2, pdu_where, f);
     }
     return -1;
 }
