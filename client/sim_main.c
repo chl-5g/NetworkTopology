@@ -1,3 +1,19 @@
+/*
+ * sim_main.c — 教学用「单包」网络拓扑仿真主程序
+ *
+ * 做什么：
+ *   从 config/network.conf 读拓扑与地址，从 PACKET_FILE 读应用层原始字节，
+ *   在内存里构造一帧 SimFrame（以太网 + 简化 IPv4 + UDP + 明文或 SM4 密文），
+ *   按「同网段 / 跨网段」两种拓扑之一，依次经过交换机、（可选）路由器、
+ *   物理层与端系统打印桩，最后在节点 B 上模拟「收包交付应用」。
+ *
+ * 两种拓扑（由 LAN_PREFIX_LEN 与 NODE_A_IP / NODE_B_IP 判定 same_l2）：
+ *   - 同网段：A — SW1 — B，不经路由器；ARP 得到的是 B 的 MAC（二层直达）。
+ *   - 跨网段：A — SW1 — 双口路由器 — SW2 — B；A 侧 ARP 下一跳为默认网关；
+ *     路由器改写以太网首部、递减 TTL，按 FIB（两条直连前缀）选出口。
+ *
+ * 注意：L1、B 侧 L5–L7 在本项目中仅为 printf 桩，不做真实比特流或会话状态。
+ */
 #include <stdio.h>
 
 #include "client.h"
@@ -12,6 +28,12 @@
 #include "sim_frame.h"
 #include "switch.h"
 
+/*
+ * 跨网段模式下校验配置是否与「双接口路由器 + 两条直连 FIB」模型一致：
+ *   - A 与其网关须在 ROUTE_PREFIX_A 下同一子网；B 与其网关须在 ROUTE_PREFIX_B 下同一子网。
+ *   - B 的 IP 不能落在 A 侧直连前缀内（否则 B 对 A 侧像直连，与经路由冲突）；
+ *     同理 A 不能落在 B 侧直连前缀内。
+ */
 static int routed_topology_ok(const SimNetConfig *c) {
     uint32_t ma = ipv4_netmask(c->route_prefix_a);
     uint32_t mb = ipv4_netmask(c->route_prefix_b);
@@ -33,6 +55,7 @@ static int routed_topology_ok(const SimNetConfig *c) {
 }
 
 int main(int argc, char **argv) {
+    /* 默认配置文件路径可通过命令行第一个参数覆盖 */
     const char *cfg_path =
         (argc > 1) ? argv[1] : "config/network.conf";
     SimNetConfig cfg;
@@ -41,6 +64,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    /* 同网段：后续不建路由器与第二台交换机；ARP 与二层目的 MAC 按直连主机处理 */
     int same_l2 = ipv4_same_subnet(cfg.node_a_ip, cfg.node_b_ip,
                                    cfg.lan_prefix_len);
     if (same_l2 && cfg.lan_prefix_len != cfg.route_prefix_a) {
@@ -72,12 +96,14 @@ int main(int argc, char **argv) {
     }
     printf("\n");
 
+    /* 发送端 A：带默认网关（跨网段时 ARP 用）；接收端 B：gw 填自身 MAC、gw_ip=0 表示无网关语义 */
     SimHost node_client, node_server;
     client_node_init(&node_client, cfg.node_a_id, cfg.node_a_mac, cfg.node_a_ip,
                       cfg.node_a_gw_mac, cfg.node_a_gw_ip);
     client_node_init(&node_server, cfg.node_b_id, cfg.node_b_mac, cfg.node_b_ip,
                       cfg.node_b_mac, 0);
 
+    /* 端口 0 视为接 A；端口 1 接 B（同网段）或接路由器（跨网段）— 与 switch_forward 的泛洪「首端口」约定一致 */
     Switch sw1;
     switch_init(&sw1, cfg.switch_port_count);
 
@@ -116,11 +142,13 @@ int main(int argc, char **argv) {
     printf("载荷: L4 UDP %u→%u，%s\n\n", (unsigned)cfg.udp_sport,
            (unsigned)cfg.udp_dport, cfg.use_sm4 ? "SM4-CBC" : "明文");
 
+    /* 仅仿真打印 + 查表：得到以太网「下一跳」目的 MAC，供组帧写入 eth.dst */
     uint8_t eth_nh[6];
     if (sim_arp_resolve_from_node_a(&cfg, cfg.node_b_ip, eth_nh) != 0) {
         return 1;
     }
 
+    /* 此处 IPv4 目的地址始终为 NODE_B_IP；跨网段时以太网仍先到网关 MAC */
     SimFrame f;
     client_emit_frame_payload_l2(&node_client, eth_nh, cfg.node_b_ip, payload,
                                   plen, cfg.use_sm4, cfg.udp_sport, cfg.udp_dport,

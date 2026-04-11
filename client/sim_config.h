@@ -1,6 +1,17 @@
 #ifndef CLIENT_SIM_CONFIG_H
 #define CLIENT_SIM_CONFIG_H
 
+/*
+ * sim_config.h — 仿真网络的全局配置（与 config/network.conf 一一对应）
+ *
+ * 字段分组理解：
+ *   - NODE_* / MAC：两台端系统标识与链路层地址。
+ *   - LAN_PREFIX_LEN：仅用于判定「是否同网段」从而选择拓扑简版或完整路由版。
+ *   - ROUTE_PREFIX_A/B、NODE_*_GW_*：跨网段时路由器直连前缀与接口地址；并与 ARP 判定掩码一致。
+ *   - EXTRA_ARP*：给 A 侧「同子网静态邻居」扩展用，IP 为 0.0.0.0 表示禁用。
+ *   - UDP_* / USE_SM4 / PACKET_FILE：应用层与 L4 行为。
+ */
+
 #include <stddef.h>
 #include <stdint.h>
 

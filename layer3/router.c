@@ -1,3 +1,10 @@
+/*
+ * router.c — 双接口路由器转发
+ *
+ * 初始化时 FIB 仅含两条「直连路由」（各接口所在前缀），转发表命中后：
+ *   校验 TTL、递减、根据目的 IP 查静态 ARP 表得到下一跳 MAC、改写以太网 src/dst。
+ * 未实现的现实细节：ICMP、分片、校验和、动态 ARP、反向路径检查等。
+ */
 #include <stdio.h>
 #include <string.h>
 
@@ -90,6 +97,10 @@ void router_init_configured(Router *r, const uint8_t mac_if0[6], uint32_t ip_if0
     fib_add_connected(r, ip_if1, prefix_len_if1, 1);
 }
 
+/*
+ * in_if：帧从哪个路由器接口进入（0=A 侧 LAN，1=B 侧 LAN，与 sim_main 中调用一致）。
+ * 返回值：成功转发出接口索引；失败 -1；目的 IP 为本机接口时返回 0（本仿真不上送真实协议栈）。
+ */
 int router_process(Router *r, SimFrame *f, int in_if) {
     if (f->eth.ether_type != ETH_TYPE_IPV4) {
         printf("[网络层/路由器] 非 IPv4，丢弃\n");

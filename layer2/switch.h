@@ -1,6 +1,12 @@
 #ifndef LAYER2_SWITCH_H
 #define LAYER2_SWITCH_H
 
+/*
+ * switch.h — 二层交换机状态与 API
+ *
+ * port_count：逻辑端口数（>=2）。cam_*：自学习得到的 MAC->端口表项。
+ */
+
 #include <stdint.h>
 
 #include "sim_frame.h"

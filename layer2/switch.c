@@ -1,3 +1,11 @@
+/*
+ * switch.c — 二层交换机简化模型
+ *
+ * CAM（Content-Addressable Memory）：源 MAC 自学习（入端口 -> 源 MAC 绑定）。
+ * 转发：若目的 MAC 在 CAM 中则单播到对应端口；否则向除入端口外的所有端口泛洪。
+ * 本仿真在泛洪时仍只保留「一条」SimFrame 继续往下走，取编号最小的出端口作为
+ * 代表路径（见打印「仍沿首出端口继续后续逻辑」）。
+ */
 #include <stdio.h>
 #include <string.h>
 

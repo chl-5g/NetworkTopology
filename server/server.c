@@ -1,3 +1,8 @@
+/*
+ * server.c — 节点 B「收包」侧：演示 UDP 端口与明文/SM4 解密后的载荷展示
+ *
+ * 不做 socket、不校验 IP 目的地址是否等于本机（教学简化）；仅根据 SimFrame 内字段打印。
+ */
 #include <stdio.h>
 
 #include "ipv4.h"

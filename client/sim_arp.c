@@ -1,3 +1,9 @@
+/*
+ * sim_arp.c — 节点 A 的「ARP 解析」仿真（无真实报文，仅 printf + 查配置表）
+ *
+ * 是否「与 A 同一子网」一律用 ROUTE_PREFIX_A 与 NODE_A_IP 做掩码比较，
+ * 以便与同网段判定 LAN_PREFIX_LEN 解耦（配置里二者可不同，主程序会 warn）。
+ */
 #include <stdio.h>
 #include <string.h>
 

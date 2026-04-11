@@ -1,3 +1,4 @@
+/* sm_session.c — 仿真固定密钥与 IV（勿用于生产；仅教学可重复加解密） */
 #include "sm_session.h"
 
 const uint8_t SM4_PSK[16] = {

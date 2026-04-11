@@ -4,6 +4,12 @@
 	> Mail: 1622546034@qq.com
 	> Created Time: 五  4/10 14:56:52 2026
  ************************************************************************/
+/*
+ * 功能摘要：
+ *   - parse_cidr / build_fib_from_dijkstra：供 layer3/topo_main 等「图论拓扑」路径使用。
+ *   - lpm_lookup_in：最长前缀匹配（假设 netmask 为连续前缀，用 popcount 当前缀长）；
+ *     sim_main 里的双口路由器复用此函数在小型 FIB 上查表。
+ */
 #include <stdio.h>
 #include <string.h>
 
@@ -53,6 +59,7 @@ void build_fib_from_dijkstra(Topology *topo, int source_node) {
     }
 }
 
+/* 在 table[0..table_size) 中选最长匹配前缀；无匹配返回 NULL */
 FIB_Entry *lpm_lookup_in(FIB_Entry *table, int table_size, uint32_t dest_ip) {
     FIB_Entry *best_match = NULL;
     int longest_prefix_len = -1;

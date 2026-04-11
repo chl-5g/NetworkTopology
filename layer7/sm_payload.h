@@ -1,6 +1,12 @@
 #ifndef SM_PAYLOAD_H
 #define SM_PAYLOAD_H
 
+/*
+ * sm_payload.h — SM4-CBC 封装在「消息字符串」与「任意字节缓冲」两套 API
+ *
+ * 与 sim_frame 配合：加密结果写入 app.sm4_cipher，IV 写入 app.iv；解密在 server 侧完成。
+ */
+
 #include <stddef.h>
 #include <stdint.h>
 

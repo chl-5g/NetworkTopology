@@ -1,6 +1,13 @@
 #ifndef LAYER4_SIM_FRAME_H
 #define LAYER4_SIM_FRAME_H
 
+/*
+ * sim_frame.h — 贯穿全仿真的「线上一帧」内存模型
+ *
+ * 布局顺序即处理顺序：EthHeader -> Ipv4Header -> UdpHeader -> AppPayload。
+ * SM4 开启时：IV 存在 app.iv 中但不计入 UDP length；UDP 线载仅为 sm4_cipher[]。
+ */
+
 #include <stddef.h>
 #include <stdint.h>
 

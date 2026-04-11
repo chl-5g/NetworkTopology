@@ -1,3 +1,9 @@
+/*
+ * topo_main.c — 与 sim_main 独立的「图 + Dijkstra + FIB」演示入口
+ *
+ * 构造 4 节点拓扑权重矩阵，跑最短路，再 build_fib_from_dijkstra 生成 fib_table，
+ * 用于理解 lpm_lookup 与路由表转换；不参与单帧以太网仿真链路。
+ */
 #include <stdio.h>
 #include <string.h>
 

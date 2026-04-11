@@ -1,3 +1,6 @@
+/*
+ * ipv4.c — IPv4 地址工具（全部使用主机字节序 uint32_t，与点分十进制互转）
+ */
 #include <stdio.h>
 
 #include "ipv4.h"

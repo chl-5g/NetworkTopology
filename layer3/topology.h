@@ -1,6 +1,13 @@
 #ifndef TOPOLOGY_H
 #define TOPOLOGY_H
 
+/*
+ * topology.h — 拓扑与路由表相关公共类型（Dijkstra 建 FIB 的 topo_main 与本仿真路由器共用）
+ *
+ * FIB_Entry：network/netmask 描述前缀；out_interface 为出接口编号；next_hop 在
+ * 本仓库的 router.c 直连场景中为 -1。lpm_lookup_in 对给定表做最长前缀匹配。
+ */
+
 #include <limits.h>
 #include <stdint.h>
 

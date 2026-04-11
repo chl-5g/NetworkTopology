@@ -4,6 +4,11 @@
 	> Mail: 1622546034@qq.com
 	> Created Time: 五  4/10 14:53:40 2026
  ************************************************************************/
+/*
+ * dijkstra.c — 在抽象拓扑上计算从 source_node 到各节点的最短路
+ *
+ * 结果写入全局 routing_table[]：next_hop 为下一跳节点下标；不可达时约定为 -2（见 topo_main 打印分支）。
+ */
 #include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>

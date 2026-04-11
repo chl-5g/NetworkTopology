@@ -1,6 +1,8 @@
 #ifndef LAYER2_ETH_H
 #define LAYER2_ETH_H
 
+/* 教学用以太网首部：无 VLAN 标签；ether_type 主机序，IPv4 常用 0x0800 */
+
 #include <stddef.h>
 #include <stdint.h>
 

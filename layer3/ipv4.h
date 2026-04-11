@@ -1,6 +1,10 @@
 #ifndef LAYER3_IPV4_H
 #define LAYER3_IPV4_H
 
+/*
+ * ipv4.h — 教学用极简 IPv4 首部（非完整 RFC791 字段布局，仅仿真所需子集）
+ */
+
 #include <stddef.h>
 #include <stdint.h>
 

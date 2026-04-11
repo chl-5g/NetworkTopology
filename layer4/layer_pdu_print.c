@@ -1,3 +1,10 @@
+/*
+ * layer_pdu_print.c — 按「各层可见数据」打印 PDU，辅助理解封装边界
+ *
+ * - L2（交换机）：只能看到以太网首部 + 其后的不透明字节块（这里拼出 IP|UDP|载荷）。
+ * - L3（路由器）：展示 IPv4 首部与 TTL 变化，以及改写后的以太网首部。
+ * - L7（客户端组帧）：对照 PACKET_FILE 明文与向下各层添加的字段。
+ */
 #include <stdio.h>
 #include <string.h>
 

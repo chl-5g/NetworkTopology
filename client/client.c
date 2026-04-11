@@ -1,3 +1,15 @@
+/*
+ * client.c — 发送端（节点 A）组帧逻辑
+ *
+ * SimFrame 在本项目里是「一整块内存里的协议栈」：自下而上依次有 EthHeader、
+ * Ipv4Header、UdpHeader、AppPayload。本文件负责：
+ *   - 填写 L2/L3 常用字段（源/目的 MAC、源 IP、目的 IP、TTL、协议号 UDP）；
+ *   - 将 PACKET_FILE 或字符串载荷放入 L7 区（明文 text[] 或 SM4 密文区）；
+ *   - 设置 UDP length = 8 + 应用载荷长度。
+ *
+ * client_emit_frame_payload_l2 与同名的非 _l2 版本区别：前者由 ARP 结果直接指定
+ * 以太网目的 MAC（同网段写对端主机；跨网段写网关），后者默认把目的 MAC 写成 gw_mac。
+ */
 #include <stdio.h>
 #include <string.h>
 
@@ -10,6 +22,7 @@
 #define DEMO_UDP_SPORT 49152u
 #define DEMO_UDP_DPORT 50000u
 
+/* eth_dst_mac 非 NULL 时用其作为以太网目的地址；否则用主机配置的默认网关 MAC */
 static void frame_fill_l2_l3(SimHost *n, uint32_t dst_ip, SimFrame *out,
                              const uint8_t *eth_dst_mac) {
     if (eth_dst_mac != NULL) {

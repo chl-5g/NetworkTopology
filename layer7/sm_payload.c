@@ -1,3 +1,8 @@
+/*
+ * sm_payload.c — SM4-CBC + PKCS#7 填充的缓冲/字符串加解密封装
+ *
+ * 底层分组运算来自 sm4.c（GmSSL 衍生实现）。
+ */
 #include <string.h>
 
 #include "sm4.h"

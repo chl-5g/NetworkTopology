@@ -1,3 +1,8 @@
+/*
+ * layer1_forward.c — 物理层桩
+ *
+ * 真实链路会处理编码、帧定界、前导码与 FCS 等；此处仅标注「比特流透传」语义并打印。
+ */
 #include <stdio.h>
 
 #include "layer1_forward.h"

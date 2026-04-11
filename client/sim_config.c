@@ -1,3 +1,9 @@
+/*
+ * sim_config.c — 解析 KEY=VALUE 配置文件
+ *
+ * 使用位掩码 mask 记录已出现的键；读完文件后必须与 M_ALL 完全相等，否则拒绝加载
+ * （避免静默使用未定义项）。未知键名或格式错误同样失败。
+ */
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,6 +12,7 @@
 #include "ipv4.h"
 #include "sim_config.h"
 
+/* 每个配置键对应一位，用于完整性检查 */
 enum {
     M_NODE_A_ID = 1u << 0,
     M_NODE_B_ID = 1u << 1,

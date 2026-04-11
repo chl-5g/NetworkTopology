@@ -1,3 +1,4 @@
+/* eth.c — MAC 地址格式化输出 */
 #include <stdio.h>
 
 #include "eth.h"

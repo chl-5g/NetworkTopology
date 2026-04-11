@@ -1,6 +1,13 @@
 #ifndef LAYER3_ROUTER_H
 #define LAYER3_ROUTER_H
 
+/*
+ * router.h — 路由器数据结构
+ *
+ * FIB_Entry 定义见 topology.h；next_hop=-1 表示直连出接口（本仿真路由器仅用此种）。
+ * arp_*：目的 IP -> 下一跳 MAC，供转发时封装以太网；须由 sim_main 预置。
+ */
+
 #include <stdint.h>
 
 #include "sim_frame.h"

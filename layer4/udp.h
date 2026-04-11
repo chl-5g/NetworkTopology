@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+/* RFC768 风格字段；length 为「首部+载荷」总字节数 */
 typedef struct {
     uint16_t src_port;
     uint16_t dst_port;

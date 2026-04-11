@@ -1,3 +1,9 @@
+/*
+ * sim_frame.c — SimFrame 调试输出
+ *
+ * sim_frame_dump 只 dump「逻辑上已用」的字节范围（以太网头起至 UDP 载荷末），
+ * 避免把 app 里未使用的大缓冲区整段打印出来。
+ */
 #include <stdio.h>
 
 #include "eth.h"

@@ -1,6 +1,10 @@
 #ifndef LAYER4_LAYER_PDU_PRINT_H
 #define LAYER4_LAYER_PDU_PRINT_H
 
+/*
+ * layer_pdu_print.h — 各层 PDU 教学打印（与真实内核/硬件解析范围对应）
+ */
+
 #include <stddef.h>
 #include <stdint.h>
 
