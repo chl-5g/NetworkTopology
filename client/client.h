@@ -17,4 +17,12 @@ void client_emit_frame_payload(SimHost *n, uint32_t dst_ip,
                                const uint8_t *data, size_t data_len, int use_sm4,
                                uint16_t sport, uint16_t dport, SimFrame *out);
 
+/*
+ * 同网段二层直达：以太网目的地址为 dst_eth_mac（对端主机 MAC），不经网关重写。
+ */
+void client_emit_frame_payload_l2(SimHost *n, const uint8_t dst_eth_mac[6],
+                                  uint32_t dst_ip, const uint8_t *data,
+                                  size_t data_len, int use_sm4, uint16_t sport,
+                                  uint16_t dport, SimFrame *out);
+
 #endif

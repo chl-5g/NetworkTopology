@@ -20,10 +20,11 @@ enum {
     M_UDP_DPORT = 1u << 10,
     M_USE_SM4 = 1u << 11,
     M_PACKET_FILE = 1u << 12,
+    M_LAN_PREFIX_LEN = 1u << 13,
     M_ALL = M_NODE_A_ID | M_NODE_B_ID | M_SWITCH_PORT_COUNT | M_NODE_A_IP |
             M_NODE_B_IP | M_NODE_A_GW_IP | M_NODE_A_MAC | M_NODE_B_MAC |
             M_NODE_A_GW_MAC | M_UDP_SPORT | M_UDP_DPORT | M_USE_SM4 |
-            M_PACKET_FILE
+            M_PACKET_FILE | M_LAN_PREFIX_LEN
 };
 
 static void str_trim(char *s) {
@@ -178,6 +179,14 @@ int sim_net_config_load(const char *path, SimNetConfig *c) {
                 return -1;
             }
             mask |= M_USE_SM4;
+        } else if (key_match(key, "LAN_PREFIX_LEN")) {
+            long v = strtol(val, NULL, 10);
+            if (v < 1 || v > 32) {
+                fclose(fp);
+                return -1;
+            }
+            c->lan_prefix_len = (int)v;
+            mask |= M_LAN_PREFIX_LEN;
         } else if (key_match(key, "PACKET_FILE")) {
             if (strlen(val) == 0 || strlen(val) >= sizeof(c->packet_file)) {
                 fclose(fp);

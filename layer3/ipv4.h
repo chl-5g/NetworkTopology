@@ -18,4 +18,10 @@ void ipv4_addr_fmt(char *buf, size_t bufsz, uint32_t addr);
 /* 解析点分 IPv4，得到与 ipv4_addr_fmt 一致的 32 位主机序值。成功返回 0。 */
 int ipv4_parse(const char *s, uint32_t *out);
 
+/* prefix_len 1..32：判断 ip 是否落在 network_host 所表示的前缀内（主机序）。 */
+int ipv4_in_prefix(uint32_t ip, uint32_t network_host, int prefix_len);
+
+/* 两地址是否在相同前缀下（用于判定同网段 / 二层直达）。prefix_len 须 1..32。 */
+int ipv4_same_subnet(uint32_t a, uint32_t b, int prefix_len);
+
 #endif

@@ -19,3 +19,26 @@ void ipv4_addr_fmt(char *buf, size_t bufsz, uint32_t addr) {
              (unsigned)((addr >> 16) & 0xFF), (unsigned)((addr >> 8) & 0xFF),
              (unsigned)(addr & 0xFF));
 }
+
+static uint32_t ipv4_prefix_mask(int prefix_len) {
+    if (prefix_len >= 32) {
+        return 0xFFFFFFFFu;
+    }
+    return 0xFFFFFFFFu << (unsigned)(32 - prefix_len);
+}
+
+int ipv4_in_prefix(uint32_t ip, uint32_t network_host, int prefix_len) {
+    if (prefix_len < 1 || prefix_len > 32) {
+        return 0;
+    }
+    uint32_t m = ipv4_prefix_mask(prefix_len);
+    return (ip & m) == (network_host & m);
+}
+
+int ipv4_same_subnet(uint32_t a, uint32_t b, int prefix_len) {
+    if (prefix_len < 1 || prefix_len > 32) {
+        return 0;
+    }
+    uint32_t m = ipv4_prefix_mask(prefix_len);
+    return (a & m) == (b & m);
+}

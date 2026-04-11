@@ -2,6 +2,9 @@
 set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR"
+if command -v python3 >/dev/null 2>&1; then
+  python3 "$DIR/scripts/gen_compile_commands.py"
+fi
 INC=(
   -Iclient -Iserver
   -Ilayer1 -Ilayer2 -Ilayer3 -Ilayer4 -Ilayer5 -Ilayer6 -Ilayer7

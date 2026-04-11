@@ -19,12 +19,14 @@ typedef struct {
     uint16_t udp_sport;
     uint16_t udp_dport;
     int use_sm4;
+    int lan_prefix_len;
     char packet_file[SIM_CONFIG_PATH_MAX];
 } SimNetConfig;
 
 /*
  * 从配置文件读取全部固定项（键名须为大写，见 config/network.conf）。
  * 不允许缺项；无内置默认值。成功返回 0。
+ * LAN_PREFIX_LEN：用于判定 A/B 是否同网段（同网段则拓扑为 A—SW1—B，不经路由器）。
  */
 int sim_net_config_load(const char *path, SimNetConfig *out);
 

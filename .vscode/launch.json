@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug sim",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/sim",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "compile-sim"
+    },
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "lldb",
+      "request": "launch",
+      "args": [],
+      "cwd": "/Users/caihaolun/NetworkTopology/client",
+      "program": "/Users/caihaolun/NetworkTopology/client/build/Debug/outDebug"
+    }
+  ]
+}

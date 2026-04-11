@@ -1,0 +1,23 @@
+{
+  "configurations": [
+    {
+      "name": "macos-clang-x64",
+      "includePath": [
+        "${workspaceFolder}/client",
+        "${workspaceFolder}/server",
+        "${workspaceFolder}/layer1",
+        "${workspaceFolder}/layer2",
+        "${workspaceFolder}/layer3",
+        "${workspaceFolder}/layer4",
+        "${workspaceFolder}/layer5",
+        "${workspaceFolder}/layer6",
+        "${workspaceFolder}/layer7"
+      ],
+      "compileCommands": "${workspaceFolder}/compile_commands.json",
+      "compilerPath": "/usr/bin/clang",
+      "cStandard": "c11",
+      "intelliSenseMode": "macos-clang-x64"
+    }
+  ],
+  "version": 4
+}
