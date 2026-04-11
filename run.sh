@@ -12,7 +12,7 @@ INC=(
 cc -Wall -Wextra -std=c11 "${INC[@]}" -o topo layer3/topo_main.c \
   layer3/dijkstra.c layer3/routing_table_conversion.c
 cc -Wall -Wextra -std=c11 "${INC[@]}" -o sim client/sim_main.c \
-  client/client.c client/sim_config.c server/server.c \
+  client/client.c client/sim_arp.c client/sim_config.c server/server.c \
   layer4/sim_frame.c layer4/layer_pdu_print.c \
   layer1/layer1_forward.c layer7/layer7_forward.c \
   layer2/eth.c layer2/switch.c \

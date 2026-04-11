@@ -16,6 +16,14 @@ enum {
     M_NODE_A_MAC = 1u << 6,
     M_NODE_B_MAC = 1u << 7,
     M_NODE_A_GW_MAC = 1u << 8,
+    M_NODE_B_GW_IP = 1u << 14,
+    M_NODE_B_GW_MAC = 1u << 15,
+    M_ROUTE_PREFIX_A = 1u << 16,
+    M_ROUTE_PREFIX_B = 1u << 17,
+    M_EXTRA_ARP1_IP = 1u << 18,
+    M_EXTRA_ARP1_MAC = 1u << 19,
+    M_EXTRA_ARP2_IP = 1u << 20,
+    M_EXTRA_ARP2_MAC = 1u << 21,
     M_UDP_SPORT = 1u << 9,
     M_UDP_DPORT = 1u << 10,
     M_USE_SM4 = 1u << 11,
@@ -23,8 +31,11 @@ enum {
     M_LAN_PREFIX_LEN = 1u << 13,
     M_ALL = M_NODE_A_ID | M_NODE_B_ID | M_SWITCH_PORT_COUNT | M_NODE_A_IP |
             M_NODE_B_IP | M_NODE_A_GW_IP | M_NODE_A_MAC | M_NODE_B_MAC |
-            M_NODE_A_GW_MAC | M_UDP_SPORT | M_UDP_DPORT | M_USE_SM4 |
-            M_PACKET_FILE | M_LAN_PREFIX_LEN
+            M_NODE_A_GW_MAC | M_NODE_B_GW_IP | M_NODE_B_GW_MAC |
+            M_ROUTE_PREFIX_A | M_ROUTE_PREFIX_B | M_EXTRA_ARP1_IP |
+            M_EXTRA_ARP1_MAC | M_EXTRA_ARP2_IP | M_EXTRA_ARP2_MAC |
+            M_UDP_SPORT | M_UDP_DPORT | M_USE_SM4 | M_PACKET_FILE |
+            M_LAN_PREFIX_LEN
 };
 
 static void str_trim(char *s) {
@@ -153,6 +164,58 @@ int sim_net_config_load(const char *path, SimNetConfig *c) {
                 return -1;
             }
             mask |= M_NODE_A_GW_MAC;
+        } else if (key_match(key, "NODE_B_GW_IP")) {
+            if (ipv4_parse(val, &c->node_b_gw_ip) != 0) {
+                fclose(fp);
+                return -1;
+            }
+            mask |= M_NODE_B_GW_IP;
+        } else if (key_match(key, "NODE_B_GW_MAC")) {
+            if (parse_mac(val, c->node_b_gw_mac) != 0) {
+                fclose(fp);
+                return -1;
+            }
+            mask |= M_NODE_B_GW_MAC;
+        } else if (key_match(key, "ROUTE_PREFIX_A")) {
+            long v = strtol(val, NULL, 10);
+            if (v < 1 || v > 32) {
+                fclose(fp);
+                return -1;
+            }
+            c->route_prefix_a = (int)v;
+            mask |= M_ROUTE_PREFIX_A;
+        } else if (key_match(key, "ROUTE_PREFIX_B")) {
+            long v = strtol(val, NULL, 10);
+            if (v < 1 || v > 32) {
+                fclose(fp);
+                return -1;
+            }
+            c->route_prefix_b = (int)v;
+            mask |= M_ROUTE_PREFIX_B;
+        } else if (key_match(key, "EXTRA_ARP1_IP")) {
+            if (ipv4_parse(val, &c->extra_arp1_ip) != 0) {
+                fclose(fp);
+                return -1;
+            }
+            mask |= M_EXTRA_ARP1_IP;
+        } else if (key_match(key, "EXTRA_ARP1_MAC")) {
+            if (parse_mac(val, c->extra_arp1_mac) != 0) {
+                fclose(fp);
+                return -1;
+            }
+            mask |= M_EXTRA_ARP1_MAC;
+        } else if (key_match(key, "EXTRA_ARP2_IP")) {
+            if (ipv4_parse(val, &c->extra_arp2_ip) != 0) {
+                fclose(fp);
+                return -1;
+            }
+            mask |= M_EXTRA_ARP2_IP;
+        } else if (key_match(key, "EXTRA_ARP2_MAC")) {
+            if (parse_mac(val, c->extra_arp2_mac) != 0) {
+                fclose(fp);
+                return -1;
+            }
+            mask |= M_EXTRA_ARP2_MAC;
         } else if (key_match(key, "UDP_SPORT")) {
             unsigned long p = strtoul(val, NULL, 10);
             if (p == 0 || p > 65535u) {

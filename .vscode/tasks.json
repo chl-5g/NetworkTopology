@@ -4,7 +4,7 @@
     {
       "label": "compile-sim",
       "type": "shell",
-      "command": "cc -Wall -Wextra -std=c11 -Iclient -Iserver -Ilayer1 -Ilayer2 -Ilayer3 -Ilayer4 -Ilayer5 -Ilayer6 -Ilayer7 -o sim client/sim_main.c client/client.c client/sim_config.c server/server.c layer4/sim_frame.c layer4/layer_pdu_print.c layer1/layer1_forward.c layer7/layer7_forward.c layer2/eth.c layer2/switch.c layer3/ipv4.c layer3/router.c layer3/dijkstra.c layer3/routing_table_conversion.c layer4/udp.c layer7/sm_session.c layer7/sm_payload.c layer7/sm4.c",
+      "command": "cc -Wall -Wextra -std=c11 -Iclient -Iserver -Ilayer1 -Ilayer2 -Ilayer3 -Ilayer4 -Ilayer5 -Ilayer6 -Ilayer7 -o sim client/sim_main.c client/client.c client/sim_arp.c client/sim_config.c server/server.c layer4/sim_frame.c layer4/layer_pdu_print.c layer1/layer1_forward.c layer7/layer7_forward.c layer2/eth.c layer2/switch.c layer3/ipv4.c layer3/router.c layer3/dijkstra.c layer3/routing_table_conversion.c layer4/udp.c layer7/sm_session.c layer7/sm_payload.c layer7/sm4.c",
       "options": {
         "cwd": "${workspaceFolder}"
       },

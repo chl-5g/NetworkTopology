@@ -49,32 +49,45 @@ void router_add_arp(Router *r, uint32_t ip, const uint8_t mac[6]) {
     r->arp_n++;
 }
 
-void router_init(Router *r) {
+static void fmt_attached_cidr(char *buf, size_t bufsz, uint32_t any_ip,
+                              int prefix_len) {
+    uint32_t m = ipv4_netmask(prefix_len);
+    uint32_t net = any_ip & m;
+    ipv4_addr_fmt(buf, bufsz, net);
+    size_t n = strlen(buf);
+    if (n + 6 < bufsz) {
+        snprintf(buf + n, bufsz - n, "/%d", prefix_len);
+    }
+}
+
+static void fib_add_connected(Router *r, uint32_t any_ip_on_subnet,
+                              int prefix_len, int out_if) {
+    uint32_t m = ipv4_netmask(prefix_len);
+    r->fib[r->fib_n].network = any_ip_on_subnet & m;
+    r->fib[r->fib_n].netmask = m;
+    r->fib[r->fib_n].next_hop = -1;
+    r->fib[r->fib_n].out_interface = out_if;
+    r->fib_n++;
+}
+
+void router_init_configured(Router *r, const uint8_t mac_if0[6], uint32_t ip_if0,
+                            int prefix_len_if0, const uint8_t mac_if1[6],
+                            uint32_t ip_if1, int prefix_len_if1) {
     memset(r, 0, sizeof(*r));
     r->num_if = 2;
+    memcpy(r->ifs[0].mac, mac_if0, 6);
+    r->ifs[0].ip = ip_if0;
+    fmt_attached_cidr(r->ifs[0].attached_cidr, sizeof(r->ifs[0].attached_cidr),
+                      ip_if0, prefix_len_if0);
 
-    uint8_t mac0[] = {0x00, 0x00, 0x00, 0x00, 0x01, 0x01};
-    uint8_t mac1[] = {0x00, 0x00, 0x00, 0x00, 0x02, 0x02};
-    memcpy(r->ifs[0].mac, mac0, 6);
-    r->ifs[0].ip = 0xC0A80101u;
-    strcpy(r->ifs[0].attached_cidr, "192.168.1.0/24");
-
-    memcpy(r->ifs[1].mac, mac1, 6);
-    r->ifs[1].ip = 0x0A000001u;
-    strcpy(r->ifs[1].attached_cidr, "10.0.0.0/8");
+    memcpy(r->ifs[1].mac, mac_if1, 6);
+    r->ifs[1].ip = ip_if1;
+    fmt_attached_cidr(r->ifs[1].attached_cidr, sizeof(r->ifs[1].attached_cidr),
+                      ip_if1, prefix_len_if1);
 
     r->fib_n = 0;
-    parse_cidr("192.168.1.0/24", &r->fib[r->fib_n].network,
-               &r->fib[r->fib_n].netmask);
-    r->fib[r->fib_n].next_hop = -1;
-    r->fib[r->fib_n].out_interface = 0;
-    r->fib_n++;
-
-    parse_cidr("10.0.0.0/8", &r->fib[r->fib_n].network,
-               &r->fib[r->fib_n].netmask);
-    r->fib[r->fib_n].next_hop = -1;
-    r->fib[r->fib_n].out_interface = 1;
-    r->fib_n++;
+    fib_add_connected(r, ip_if0, prefix_len_if0, 0);
+    fib_add_connected(r, ip_if1, prefix_len_if1, 1);
 }
 
 int router_process(Router *r, SimFrame *f, int in_if) {
@@ -121,18 +134,23 @@ int router_process(Router *r, SimFrame *f, int in_if) {
         return -1;
     }
 
+    char dip[20];
+    ipv4_addr_fmt(dip, sizeof(dip), f->ip.dst_addr);
+
     const uint8_t *nh_mac = router_resolve_mac(r, f->ip.dst_addr);
     if (nh_mac == NULL) {
-        printf("[网络层/路由器] 无 ARP，无法解析下一跳二层地址\n");
+        printf(
+            "[网络层/路由器] 转发表命中出接口 %d，但对目的 IP %s 无 ARP 表项；"
+            "现实中应在此网段发 ARP Request 解析该 IP 的 MAC（或走已学"
+            "习/静态邻居）。本仿真未动态收包学习，可在配置中预置 "
+            "EXTRA_ARP1/2_IP+MAC 或在启动时补全 router_add_arp。\n",
+            out_if, dip);
         router_dump_simframe("丢弃：无 ARP", f);
         return -1;
     }
 
     memcpy(f->eth.dst_mac, nh_mac, 6);
     memcpy(f->eth.src_mac, r->ifs[out_if].mac, 6);
-
-    char dip[20];
-    ipv4_addr_fmt(dip, sizeof(dip), f->ip.dst_addr);
     printf("[网络层/路由器] LPM 命中 -> 出接口 %d，转发到 %s（已重写以太网首部）\n",
            out_if, dip);
     layer_pdu_print_l3_router(f, "路由器转发", ttl_before);

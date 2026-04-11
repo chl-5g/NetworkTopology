@@ -53,15 +53,25 @@ int switch_forward_port(Switch *sw, const SimFrame *f, int in_port,
         }
         return egress;
     }
-    printf("[数据链路层/交换机] 目的 MAC 未知，单端口泛洪到除 %d 外的端口\n",
+    printf("[数据链路层/交换机] 目的 MAC 未知，向除入端口 %d 外的所有端口泛洪\n",
            in_port);
+    int first_egress = -1;
     for (int p = 0; p < sw->port_count; p++) {
-        if (p != in_port) {
-            if (pdu_where != NULL) {
-                layer_pdu_print(2, pdu_where, f);
-            }
-            return p;
+        if (p == in_port) {
+            continue;
         }
+        if (first_egress < 0) {
+            first_egress = p;
+        }
+        printf("  -> 端口 %d\n", p);
+        if (pdu_where != NULL) {
+            layer_pdu_print(2, pdu_where, f);
+        }
+    }
+    if (first_egress >= 0) {
+        printf("  （每端口一份副本；仿真仍沿首出端口 %d 继续后续逻辑）\n",
+               first_egress);
+        return first_egress;
     }
     if (pdu_where != NULL) {
         layer_pdu_print(2, pdu_where, f);

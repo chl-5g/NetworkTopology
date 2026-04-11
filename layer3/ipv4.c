@@ -20,11 +20,18 @@ void ipv4_addr_fmt(char *buf, size_t bufsz, uint32_t addr) {
              (unsigned)(addr & 0xFF));
 }
 
-static uint32_t ipv4_prefix_mask(int prefix_len) {
+uint32_t ipv4_netmask(int prefix_len) {
+    if (prefix_len < 1) {
+        return 0;
+    }
     if (prefix_len >= 32) {
         return 0xFFFFFFFFu;
     }
     return 0xFFFFFFFFu << (unsigned)(32 - prefix_len);
+}
+
+static uint32_t ipv4_prefix_mask(int prefix_len) {
+    return ipv4_netmask(prefix_len);
 }
 
 int ipv4_in_prefix(uint32_t ip, uint32_t network_host, int prefix_len) {

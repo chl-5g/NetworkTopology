@@ -7,9 +7,30 @@
 #include "layer_pdu_print.h"
 #include "router.h"
 #include "server.h"
+#include "sim_arp.h"
 #include "sim_config.h"
 #include "sim_frame.h"
 #include "switch.h"
+
+static int routed_topology_ok(const SimNetConfig *c) {
+    uint32_t ma = ipv4_netmask(c->route_prefix_a);
+    uint32_t mb = ipv4_netmask(c->route_prefix_b);
+    uint32_t net_a = c->node_a_ip & ma;
+    uint32_t net_b = c->node_b_ip & mb;
+    if ((c->node_a_ip & ma) != (c->node_a_gw_ip & ma)) {
+        return 0;
+    }
+    if ((c->node_b_ip & mb) != (c->node_b_gw_ip & mb)) {
+        return 0;
+    }
+    if (ipv4_in_prefix(c->node_b_ip, net_a, c->route_prefix_a)) {
+        return 0;
+    }
+    if (ipv4_in_prefix(c->node_a_ip, net_b, c->route_prefix_b)) {
+        return 0;
+    }
+    return 1;
+}
 
 int main(int argc, char **argv) {
     const char *cfg_path =
@@ -17,6 +38,22 @@ int main(int argc, char **argv) {
     SimNetConfig cfg;
     if (sim_net_config_load(cfg_path, &cfg) != 0) {
         fprintf(stderr, "无法读取配置文件: %s\n", cfg_path);
+        return 1;
+    }
+
+    int same_l2 = ipv4_same_subnet(cfg.node_a_ip, cfg.node_b_ip,
+                                   cfg.lan_prefix_len);
+    if (same_l2 && cfg.lan_prefix_len != cfg.route_prefix_a) {
+        fprintf(stderr,
+                "提示: 同网段时拓扑用 LAN_PREFIX_LEN、ARP 用 ROUTE_PREFIX_A；"
+                "二者不一致可能导致同网段判定与 ARP 不一致，建议配成相同。\n");
+    }
+    if (!same_l2 && !routed_topology_ok(&cfg)) {
+        fprintf(stderr,
+                "跨网段模式配置无效：A 与 NODE_A_GW_IP 须在 ROUTE_PREFIX_A 掩码下"
+                "属同一子网；B 与 NODE_B_GW_IP 须在 ROUTE_PREFIX_B 掩码下属同一子"
+                "网；且 B 不得落在 A 侧直连前缀内、A 不得落在 B 侧直连前缀内（否则"
+                "与双接口路由模型冲突；FIB 由上述前缀推导）。\n");
         return 1;
     }
 
@@ -35,18 +72,6 @@ int main(int argc, char **argv) {
     }
     printf("\n");
 
-    int same_l2 = ipv4_same_subnet(cfg.node_a_ip, cfg.node_b_ip,
-                                   cfg.lan_prefix_len);
-    if (!same_l2) {
-        if (!ipv4_in_prefix(cfg.node_a_ip, 0xC0A80100u, 24) ||
-            !ipv4_in_prefix(cfg.node_b_ip, 0x0A000000u, 8)) {
-            fprintf(stderr,
-                    "跨网段模式：须 A 在 192.168.1.0/24、B 在 10.0.0.0/8（与内置"
-                    "路由器 FIB 一致）。\n");
-            return 1;
-        }
-    }
-
     SimHost node_client, node_server;
     client_node_init(&node_client, cfg.node_a_id, cfg.node_a_mac, cfg.node_a_ip,
                       cfg.node_a_gw_mac, cfg.node_a_gw_ip);
@@ -60,9 +85,17 @@ int main(int argc, char **argv) {
     Router router;
     if (!same_l2) {
         switch_init(&sw2, cfg.switch_port_count);
-        router_init(&router);
+        router_init_configured(
+            &router, cfg.node_a_gw_mac, cfg.node_a_gw_ip, cfg.route_prefix_a,
+            cfg.node_b_gw_mac, cfg.node_b_gw_ip, cfg.route_prefix_b);
         router_add_arp(&router, cfg.node_a_ip, cfg.node_a_mac);
         router_add_arp(&router, cfg.node_b_ip, cfg.node_b_mac);
+        if (cfg.extra_arp1_ip != 0u) {
+            router_add_arp(&router, cfg.extra_arp1_ip, cfg.extra_arp1_mac);
+        }
+        if (cfg.extra_arp2_ip != 0u) {
+            router_add_arp(&router, cfg.extra_arp2_ip, cfg.extra_arp2_mac);
+        }
     }
 
     char sa[20], sb[20];
@@ -83,15 +116,15 @@ int main(int argc, char **argv) {
     printf("载荷: L4 UDP %u→%u，%s\n\n", (unsigned)cfg.udp_sport,
            (unsigned)cfg.udp_dport, cfg.use_sm4 ? "SM4-CBC" : "明文");
 
-    SimFrame f;
-    if (same_l2) {
-        client_emit_frame_payload_l2(&node_client, cfg.node_b_mac, cfg.node_b_ip,
-                                    payload, plen, cfg.use_sm4, cfg.udp_sport,
-                                    cfg.udp_dport, &f);
-    } else {
-        client_emit_frame_payload(&node_client, cfg.node_b_ip, payload, plen,
-                                  cfg.use_sm4, cfg.udp_sport, cfg.udp_dport, &f);
+    uint8_t eth_nh[6];
+    if (sim_arp_resolve_from_node_a(&cfg, cfg.node_b_ip, eth_nh) != 0) {
+        return 1;
     }
+
+    SimFrame f;
+    client_emit_frame_payload_l2(&node_client, eth_nh, cfg.node_b_ip, payload,
+                                  plen, cfg.use_sm4, cfg.udp_sport, cfg.udp_dport,
+                                  &f);
 
     printf("========== ① 客户端组帧（应用 + L4 封装）==========\n");
     layer_pdu_print_client_emit(payload, plen, &f, cfg.use_sm4, "组帧完成");

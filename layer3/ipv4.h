@@ -24,4 +24,7 @@ int ipv4_in_prefix(uint32_t ip, uint32_t network_host, int prefix_len);
 /* 两地址是否在相同前缀下（用于判定同网段 / 二层直达）。prefix_len 须 1..32。 */
 int ipv4_same_subnet(uint32_t a, uint32_t b, int prefix_len);
 
+/* 连续前缀掩码（主机序），prefix_len 须 1..32。 */
+uint32_t ipv4_netmask(int prefix_len);
+
 #endif
